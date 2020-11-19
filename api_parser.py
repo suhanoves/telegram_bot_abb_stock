@@ -90,9 +90,11 @@ def format_search_results(raw_results: dict):
 
     formated_results = []
     for result in list_of_results:
+        status = result['status']['name'] if result['status'] else None
         current_result = dict(product_id=result['id'],
                               manufacturer_code=result['manufacturerCode'],
-                              product_name=result['names']['ru'])
+                              product_name=result['names']['ru'],
+                              status=status)
         formated_results.append(current_result)
 
     return formated_results
@@ -100,15 +102,15 @@ def format_search_results(raw_results: dict):
 
 def format_product_info(raw_info: dict):
     product_info = dict()
-
+    print(raw_info)
     product_info['manufacturer_code'] = raw_info['manufacturerCode']
-    product_info['name'] = raw_info['names']['ru']
-    product_info['status'] = raw_info['status']
-    product_info['series'] = raw_info['additionalFields']['marketingSeries']
-    product_info['country'] = raw_info['additionalFields']['country']
-    product_info['delivery_time'] = raw_info['additionalFields']['deliveryDate']
-    product_info['price_group'] = raw_info['additionalFields']['priceGroup']
-    product_info['stock_category'] = raw_info['additionalFields']['stock']
+    product_info['product_name'] = raw_info['names']['ru']
+    product_info['status'] = raw_info['status']['name'] if product_info.get('status') else None
+    product_info['series'] = raw_info['additionalFields'].get('marketingSeries')
+    product_info['country'] = raw_info['additionalFields'].get('country')
+    product_info['delivery_time'] = raw_info['additionalFields'].get('deliveryDate')
+    product_info['price_group'] = raw_info['additionalFields'].get('priceGroup')
+    product_info['stock_category'] = raw_info['additionalFields'].get('stock')
 
     # get prices
     try:
@@ -116,6 +118,7 @@ def format_product_info(raw_info: dict):
         price = raw_info.get('prices')[0]
         product_info['price']['value'] = price['value']
         product_info['price']['currency'] = price['currency']['sign']
+        product_info['price']['vat'] = price['withVat']
     except IndexError:
         product_info['price'] = {}
 
@@ -170,7 +173,8 @@ def format_product_info(raw_info: dict):
     for cert in raw_info['additionalFields']['certificates']:
         current_cert = dict()
         current_cert['type'] = cert['type']
-        current_cert['cert'] = f"{config.CERT_URL}/{cert['filePath']}"
+
+        current_cert['url'] = f"{config.CERT_URL}/{cert['filePath']}"
         current_cert['validity_from'] = cert['validityPeriodFrom']
         current_cert['validity_to'] = cert['validityPeriodTo']
         certificates.append(current_cert)

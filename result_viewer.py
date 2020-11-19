@@ -1,46 +1,31 @@
-def info_viewer(product_info):
-    strings = []
+NOT_FOUND = 'Нет данных'
 
-    if product_info.get('additionalFields').get('marketingSeries'):
-        strings.append(f"<b>Серия:</b> {product_info['additionalFields']['marketingSeries']}")
-    if product_info.get('manufacturerCode'):
-        strings.append(f"<b>Артикул:</b> {product_info['manufacturerCode']}")
 
-    if product_info.get('descriptions').get('ru'):
-        strings.append(f"<b>Наименование:</b> {product_info['descriptions']['ru']}")
-    elif product_info.get('names').get('ru'):
-        strings.append(f"<b>Наименование:</b> {product_info['names']['ru']}")
+def info_viewer(product_info: dict):
+    strings = list()
 
-    strings.append('')
-    if product_info.get('status'):
-        strings.append(f"<b>Статус:</b> {product_info['status']}")
+    strings.append(f"<b>Серия:</b> {product_info.get('series', NOT_FOUND)}")
+    strings.append(f"<b>Артикул:</b> {product_info.get('manufacturer_code', NOT_FOUND)}")
+    strings.append(f"<b>Наименование:</b> {product_info.get('product_name', NOT_FOUND)}")
+    if product_info['status']:
+        strings.append(f"<b>Статус:</b> {product_info['status']['name']}")
+    strings.append(f"<b>Страна производства:</b> {product_info.get('country', NOT_FOUND)}")
+    strings.append(f"<b>ГЦМ:</b> {product_info.get('price_group', NOT_FOUND)}")
+    price = product_info['price'].get('value', NOT_FOUND)
+    currency = product_info['price'].get('currency', '')
+    vat = product_info['price'].get('vat', None)
+    if vat is None:
+        vat = ''
+    if vat:
+        vat = 'с НДС'
+    else:
+        vat = 'без НДС'
+    strings.append(f"<b>Тариф:</b> {price} {currency}.{vat}")
 
-    if product_info.get('additionalFields').get('country'):
-        strings.append(f"<b>Страна производства:</b> {product_info['additionalFields']['country']}")
-
-    strings.append('')
-    if product_info.get('price'):
-        strings.append(f"<b>Тариф:</b> {product_info['price']} руб.БЕЗ НДС")
-
-    if product_info.get('additionalFields').get('priceGroup'):
-        strings.append(f"<b>ГЦМ:</b> {product_info['additionalFields']['priceGroup']}")
-    if product_info.get('additionalFields').get('stock'):
-        strings.append(f"<b>Скл.статус:</b> {product_info['additionalFields']['stock']}")
-
-    if product_info.get('additionalFields').get('deliveryDate'):
-        strings.append(f"<b>Срок поставки:</b> {product_info['additionalFields']['deliveryDate']}")
-    if product_info.get('packs').[0].get('deliveryDate'):
-        strings.append(f"<b>Кратность:</b> {product_info['packs'][0]['multiplicity']}")
+    strings.append(f"<b>Скл.статус:</b> {product_info.get('stock_category', NOT_FOUND)}")
+    strings.append(f"<b>Срок поставки:</b> {product_info.get('delivery_time', NOT_FOUND)}")
 
     return '\n'.join(strings)
-
-
-def photo_viewer(product_info):
-    return [product_info.get('images').get('max')]
-
-
-def cert_viewer(product_info):
-    pass
 
 
 def size_viwer(producti_info):

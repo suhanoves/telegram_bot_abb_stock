@@ -57,7 +57,7 @@ def help_message(message):
 @bot.callback_query_handler(func=lambda call: call.data == 'manufacturer_code')
 @bot.callback_query_handler(func=lambda call: call.data == 'product_name')
 def call_search_option(call):
-    # получаем ID
+    # получаем telegram IDs
     user_id = get_user_id(call)
     chat_id = get_chat_id(call)
     message_id = get_message_id(call)
@@ -87,13 +87,13 @@ def call_search_option(call):
 
     # если результат поиска уникален
     elif len(search_results) == 1:
-        # получаем информацию о найденном оборудовании
-        product_info = get_product_info_from_search_results(search_results)
+        # получаем сточку с продуктом
+        search_result = get_product_from_search_results(search_results)
 
-        # отправляем сообщение об успешном поиске
+        # отправляем сообщение об успешном поискe
         send_success_search_meassage(user_id=user_id,
                                      chat_id=chat_id,
-                                     product_info=product_info)
+                                     search_result=search_result)
 
     # если поиск даёт множество совпадений
     else:
@@ -121,7 +121,7 @@ def list_pagination_message(call):
     current_page = int(call.data.split()[-1])
 
     # получаем поисковую выдачу по пользователю
-    search_results = get_search_results(user_id)
+    search_results = get_user_search_results(user_id)
 
     text, keyboard = get_search_results_message(search_results=search_results,
                                                 current_page=current_page)
@@ -154,16 +154,16 @@ def call_product_name(call):
     product_position = int(call.data.split()[-1]) - 1
 
     # получаем поисковую выдачу
-    search_results = get_search_results(user_id)
+    search_results = get_user_search_results(user_id)
 
     # получаем информацию о найденном оборудовании
-    product_info = get_product_info_from_search_results(search_results=search_results,
-                                                        position=product_position)
+    search_result = get_product_from_search_results(search_results=search_results,
+                                                   position=product_position)
 
     # отправляем сообщение об успешном поиске
     send_success_search_meassage(user_id=user_id,
                                  chat_id=chat_id,
-                                 product_info=product_info)
+                                 search_result=search_result)
 
 
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Информация']}$")
@@ -196,24 +196,37 @@ def get_photo(message):
     # получаем информацию по продукту
     product_info = get_product_info(user_id)
 
-    # получаем форматированный текст сообщения
-    links = result_viewer.photo_viewer(product_info)
+    # получаем список ссылок на фотографии
+    photos = product_info['photos']
 
     # добавляем клавиатуру
     keyboard = keyboards.get_info_keyboard()
 
-    for link in links:
+    for photo in photos:
         bot.send_photo(chat_id=chat_id,
-                       photo=link,
+                       photo=photo,
                        reply_markup=keyboard)
 
 
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Сертификаты']}$")
 def get_cert(message):
-    text = 'раздел в разработке'
-    bot.send_message(chat_id=message.chat.id,
-                     text=text,
-                     parse_mode='HTML')
+    # получаем ID
+    user_id = get_user_id(message)
+    chat_id = get_chat_id(message)
+
+    # получаем информацию по продукту
+    product_info = get_product_info(user_id)
+
+    # получаем список ссылок на фотографии
+    certificates = product_info['certificates']
+
+    # добавляем клавиатуру
+    keyboard = keyboards.get_info_keyboard()
+
+    for cert in certificates:
+        bot.send_document(chat_id=chat_id,
+                          data=cert['url'],
+                          reply_markup=keyboard)
 
 
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Массогабарит']}$")
@@ -234,7 +247,7 @@ def get_stock(message):
 
 @bot.message_handler(func=lambda m: True)
 def any_message(message):
-    if all(x.isalnum() or x.isspace() for x in message.text):
+    if all(x.isalnum() or x in ' -+=/.,*%' for x in message.text):
         answer = 'Как искать оборудование:\n<b>по артикулу</b> или <b>по названию</b>?'
         keyboard = keyboards.get_find_keyboard()
         bot.reply_to(message=message,
@@ -283,10 +296,12 @@ def list_pagination(search_results: list, current_page: int = 1):
     for item in search_results[product_start_slice:product_end_slice]:
         count += 1
         product_numbers.append(count)
+        # получаем статус оборудования
+        status = item['status']
         # получаем название оборудования
-        product_name = item['names']['ru'] if item['names']['ru'] else item['descriptions']['ru']
+        product_name = item['product_name']
         # создаём список пунктов оборудования
-        string_of_text.append(f'{count}. {product_name}')
+        string_of_text.append(f'{count}. <b>{status + "." if status else ""}</b> {product_name} ')
         # увеличиваем счётчик
 
     # склеиваем пункты списка для формирования сообщения
@@ -306,11 +321,11 @@ def del_user_search_history(user_id: int):
         del USER_PRODUCT_INFO[user_id]
 
 
-def get_search_results(user_id: int):
+def get_user_search_results(user_id: int):
     return USER_SEARCH_RESULTS[user_id]
 
 
-def get_product_info_from_search_results(search_results: list, position: int = 0):
+def get_product_from_search_results(search_results: list, position: int = 0):
     return search_results[position]
 
 
@@ -340,19 +355,19 @@ def get_message_id(instance):
         return instance.message_id
 
 
-def send_success_search_meassage(user_id: int, chat_id: int, product_info):
+def send_success_search_meassage(user_id: int, chat_id: int, search_result):
+    # получаем информацию по продукту
+    product_info = api_parser.get_product_info(search_result['product_id'])
+
     # кэшируем в базу данных
     cash_product_info(user_id=user_id, product_info=product_info)
 
     # Получаем артикул и название оборудования
-    manudacture_code = product_info['manufacturerCode']
-    if product_info['names']['ru']:
-        product_name = product_info['names']['ru']
-    else:
-        product_name = product_info['descriptions']['ru']
+    manudacture_code = product_info['manufacturer_code']
+    product_name = product_info['product_name']
 
     # выводим сообщение с клавиатурой с выбором информации по продукту
-    string_1 = 'По вашему запросу найдено следующее оборудование:'
+    string_1 = 'По вашему запросу найдено следующее оборудование:\n'
     string_2 = f"<b>{manudacture_code}</b> {product_name}"
     string_3 = '\nВыберите вид информации, которую вы хотите получить:'
     text = f'{string_1}\n{string_2}\n{string_3}'
