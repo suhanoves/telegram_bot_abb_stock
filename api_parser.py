@@ -2,7 +2,7 @@ import config
 import requests
 
 
-def generate_new_token(session):
+def generate_new_token():
     """Generate a new token for API and save it to the file 'token.txt'
     Token lifetime is 10 hours"""
 
@@ -13,7 +13,7 @@ def generate_new_token(session):
     }
 
     # send a request for generate new token by the server
-    auth_response = session.post(config.AUTH_URL, json=auth_data)
+    auth_response = requests.post(config.AUTH_URL, json=auth_data)
 
     # get token from json
     token = auth_response.json()['token']
@@ -51,9 +51,19 @@ def get_search_results(manufacturer_code: str = '', product_name: str = ''):
               'name': product_name,
               'sort': 'manufacturerCode',
               }
-    search_results = session.get(config.API_SEARCH_URL, params=params).json()
-    formated_results = format_search_results(search_results)
-    return formated_results
+    response = session.get(f"{config.API_SEARCH_URL}", params=params)
+
+    # if status OK or similar
+    if response:
+        search_results = response.json()
+        formated_results = format_search_results(search_results)
+        return formated_results
+    # if status "Unauthorized"
+    elif response.status_code == 401:
+        generate_new_token()
+        get_session()
+        get_search_results(manufacturer_code=manufacturer_code,
+                           product_name=product_name)
 
 
 def get_product_info(product_id: str):
@@ -174,7 +184,3 @@ def format_product_info(raw_info: dict):
         product_info['photos'] = raw_info.get('images').get('max')
 
     return product_info
-
-
-# print(get_search_results(manufacturer_code='2CDS253001R0164'))
-print(get_product_info(product_id=23348))
