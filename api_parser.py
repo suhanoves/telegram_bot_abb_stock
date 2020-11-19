@@ -51,20 +51,20 @@ def get_search_results(manufacturer_code: str = '', product_name: str = ''):
               'name': product_name,
               'sort': 'manufacturerCode',
               }
-    search_results = session.get(config.API_URL, params=params).json()
-    formated_results = format_product_info(search_results)
+    search_results = session.get(config.API_SEARCH_URL, params=params).json()
+    formated_results = format_search_results(search_results)
     return formated_results
 
 
 def get_product_info(product_id: str):
     session = get_session()
 
-    raw_info = session.get(f'{config.API_URL}/products/{product_id}').json()
+    raw_info = session.get(f'{config.API_SEARCH_URL}/{product_id}').json()
 
-    prices = session.get(f'{config.API_URL}/products/{product_id}/prices').json()
+    prices = session.get(f'{config.API_SEARCH_URL}/{product_id}/prices').json()
     raw_info['prices'] = prices
 
-    stocks = session.get(f'{config.API_URL}/products/{product_id}/remains').json()
+    stocks = session.get(f'{config.API_SEARCH_URL}/{product_id}/remains').json()
     raw_info['stocks'] = stocks
 
     photos = session.get(f'{config.API_URL}/gallery/{product_id}').json()
@@ -174,3 +174,7 @@ def format_product_info(raw_info: dict):
         product_info['photos'] = raw_info.get('images').get('max')
 
     return product_info
+
+
+# print(get_search_results(manufacturer_code='2CDS253001R0164'))
+print(get_product_info(product_id=23348))
