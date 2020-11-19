@@ -1,6 +1,7 @@
 import config
 import requests
 
+
 def generate_new_token(session):
     """Generate a new token for API and save it to the file 'token.txt'
     Token lifetime is 10 hours"""
@@ -11,14 +12,19 @@ def generate_new_token(session):
         'password': config.PASSWORD
     }
 
+    # send a request for generate new token by the server
     auth_response = session.post(config.AUTH_URL, json=auth_data)
+
+    # get token from json
     token = auth_response.json()['token']
 
+    # save token to the file
     with open('token', 'w', encoding='utf-8') as file:
         file.write(token)
 
 
 def get_token():
+    # get token by read the file
     with open('token', 'r', encoding='utf-8') as file:
         return file.read()
 
@@ -45,36 +51,44 @@ def get_search_results(manufacturer_code: str = '', product_name: str = ''):
               'name': product_name,
               'sort': 'manufacturerCode',
               }
-
-    search_results = session.get(config.API_URL, params=params)
-
-    return search_results
+    search_results = session.get(config.API_URL, params=params).json()
+    formated_results = format_product_info(search_results)
+    return formated_results
 
 
 def get_product_info(product_id: str):
     session = get_session()
 
-    raw_info = session.get(f'{config.API_URL}products/{product_id}').json()
+    raw_info = session.get(f'{config.API_URL}/products/{product_id}').json()
 
-    prices = session.get(f'{config.API_URL}products/{product_id}/prices').json()
+    prices = session.get(f'{config.API_URL}/products/{product_id}/prices').json()
     raw_info['prices'] = prices
 
-    stocks = session.get(f'{config.API_URL}products/{product_id}/remains').json()
+    stocks = session.get(f'{config.API_URL}/products/{product_id}/remains').json()
     raw_info['stocks'] = stocks
 
     photos = session.get(f'{config.API_URL}/gallery/{product_id}').json()
     raw_info['photos'] = photos
 
-    prodict_info = formated_product_info(raw_info)
-
-    # TODO убрать логирование
-    with open('json/product/general_info.json', 'w', encoding='utf-8') as file:
-        json.dump(prodict_info, file, ensure_ascii=False, indent=4)
+    prodict_info = format_product_info(raw_info)
 
     return prodict_info
 
 
-def formated_product_info(raw_info: dict):
+def format_search_results(raw_results: dict):
+    list_of_results = raw_results['items']
+
+    formated_results = []
+    for result in list_of_results:
+        current_result = dict(product_id=result['id'],
+                              manufacturer_code=result['manufacturerCode'],
+                              product_name=result['names']['ru'])
+        formated_results.append(current_result)
+
+    return formated_results
+
+
+def format_product_info(raw_info: dict):
     product_info = dict()
 
     product_info['manufacturer_code'] = raw_info['manufacturerCode']
@@ -146,7 +160,7 @@ def formated_product_info(raw_info: dict):
     for cert in raw_info['additionalFields']['certificates']:
         current_cert = dict()
         current_cert['type'] = cert['type']
-        current_cert['cert'] = config.CERT_URL + cert['filePath']
+        current_cert['cert'] = f"{config.CERT_URL}/{cert['filePath']}"
         current_cert['validity_from'] = cert['validityPeriodFrom']
         current_cert['validity_to'] = cert['validityPeriodTo']
         certificates.append(current_cert)
@@ -155,7 +169,7 @@ def formated_product_info(raw_info: dict):
     # get photo gallery
     try:
         photos = raw_info.get('photos')
-        product_info['photos'] = [config.GALLERY_URL + photo['mdmUrl'] for photo in photos]
+        product_info['photos'] = [f"{config.GALLERY_URL}/{photo['mdmUrl']}" for photo in photos]
     except IndexError:
         product_info['photos'] = raw_info.get('images').get('max')
 
