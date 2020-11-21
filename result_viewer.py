@@ -16,9 +16,11 @@ RU_MONTH_VALUES = {
     12: 'декабря',
 }
 
+
 def info_viewer(product_info: dict):
     strings = list()
 
+    strings.append(f"<b>ГЦМ:</b> {product_info.get('price_group', NOT_FOUND)}")
     strings.append(f"<b>Серия:</b> {product_info.get('series', NOT_FOUND)}")
     strings.append(f"<b>Артикул:</b> {product_info.get('manufacturer_code', NOT_FOUND)}")
     strings.append(f"<b>Наименование:</b> {product_info.get('product_name', NOT_FOUND)}")
@@ -37,7 +39,6 @@ def info_viewer(product_info: dict):
         vat = 'без НДС'
     strings.append(f"<b>Тариф:</b> {price} {currency}.{vat}")
 
-    strings.append(f"<b>ГЦМ:</b> {product_info.get('price_group', NOT_FOUND)}")
     strings.append(f"<b>Скл.статус:</b> {product_info.get('stock_category', NOT_FOUND)}")
     strings.append(f"<b>Срок поставки:</b> {product_info.get('delivery_time', NOT_FOUND)}")
 

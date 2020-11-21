@@ -53,7 +53,7 @@ def get_search_results(manufacturer_code: str = '', product_name: str = ''):
     session = get_session()
     params = {'manufacturerCode': manufacturer_code,
               'name': product_name,
-              'sort': 'manufacturerCode',
+              'sort': 'manufacturerCode'
               }
     response = session.get(f"{config.API_SEARCH_URL}", params=params)
 
@@ -64,13 +64,11 @@ def get_search_results(manufacturer_code: str = '', product_name: str = ''):
         return formated_results
     # if status "Unauthorized"
     elif response.status_code == 401:
-        return response.status_code
-
         # TODO расскоментировать, когда восстановят автогенерацию токена
         # generate_new_token()
         # get_session()
-        # get_search_results(manufacturer_code=manufacturer_code,
-        #                    product_name=product_name)
+        # get_search_results(manufacturer_code=manufacturer_code, product_name=product_name)
+        return response.status_code
 
 
 def get_product_info(product_id: str):
@@ -96,13 +94,19 @@ def format_search_results(raw_results: dict):
     list_of_results = raw_results['items']
 
     formated_results = []
+    bad_statuses = ('Inactive',
+                    'Не используется',
+                    'Нужен номер партии',
+                    'Obsolete (Phase Out)')
+
     for result in list_of_results:
         status = result['status']['name'] if result['status'] else None
         current_result = dict(product_id=result['id'],
                               manufacturer_code=result['manufacturerCode'],
                               product_name=result['names']['ru'],
                               status=status)
-        formated_results.append(current_result)
+        if status not in bad_statuses:
+            formated_results.append(current_result)
 
     return formated_results
 

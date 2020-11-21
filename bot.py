@@ -243,13 +243,18 @@ def get_cert(message):
         # добавляем клавиатуру
         keyboard = keyboards.get_info_keyboard()
 
-        for cert in certificates:
-            caption = result_viewer.cert_viwer(cert)
-            bot.send_document(chat_id=chat_id,
-                              data=cert['url'],
-                              caption=caption,
-                              parse_mode='HTML',
-                              reply_markup=keyboard)
+        if certificates:
+            for cert in certificates:
+                caption = result_viewer.cert_viwer(cert)
+                bot.send_document(chat_id=chat_id,
+                                  data=cert['url'],
+                                  caption=caption,
+                                  parse_mode='HTML',
+                                  reply_markup=keyboard)
+        else:
+            bot.send_message(chat_id=chat_id,
+                             text='Сертификатов не обнаружено',
+                             reply_markup=keyboard)
     else:
         send_empty_search_history_message(chat_id)
 
