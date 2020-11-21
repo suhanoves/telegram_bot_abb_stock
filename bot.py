@@ -219,10 +219,15 @@ def get_photo(message):
         # добавляем клавиатуру
         keyboard = keyboards.get_info_keyboard()
 
-        for photo in photos:
-            bot.send_photo(chat_id=chat_id,
-                           photo=photo,
-                           reply_markup=keyboard)
+        if photos:
+            for photo in photos:
+                bot.send_photo(chat_id=chat_id,
+                               photo=photo,
+                               reply_markup=keyboard)
+        else:
+            bot.send_message(chat_id=chat_id,
+                             text='Фотографий не обнаружено',
+                             reply_markup=keyboard)
     else:
         send_empty_search_history_message(chat_id)
 
