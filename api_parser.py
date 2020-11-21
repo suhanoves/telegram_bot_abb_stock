@@ -18,6 +18,10 @@ def generate_new_token():
     # get token from json
     token = auth_response.json()['token']
 
+    save_token_to_file(token)
+
+
+def save_token_to_file(token):
     # save token to the file
     with open('token', 'w', encoding='utf-8') as file:
         file.write(token)
@@ -60,10 +64,13 @@ def get_search_results(manufacturer_code: str = '', product_name: str = ''):
         return formated_results
     # if status "Unauthorized"
     elif response.status_code == 401:
-        generate_new_token()
-        get_session()
-        get_search_results(manufacturer_code=manufacturer_code,
-                           product_name=product_name)
+        return response.status_code
+
+        # TODO расскоментировать, когда восстановят автогенерацию токена
+        # generate_new_token()
+        # get_session()
+        # get_search_results(manufacturer_code=manufacturer_code,
+        #                    product_name=product_name)
 
 
 def get_product_info(product_id: str):
@@ -102,7 +109,6 @@ def format_search_results(raw_results: dict):
 
 def format_product_info(raw_info: dict):
     product_info = dict()
-    print(raw_info)
     product_info['manufacturer_code'] = raw_info['manufacturerCode']
     product_info['product_name'] = raw_info['names']['ru']
     product_info['status'] = raw_info['status']['name'] if product_info.get('status') else None
@@ -127,14 +133,20 @@ def format_product_info(raw_info: dict):
     product_info['dimensions']['ean'] = raw_info.get('additionalFields').get('ean')
 
     dimensions = raw_info.get('sizeCharacteristics')
-    product_info['dimensions']['height'] = dimensions['height']
-    product_info['dimensions']['height_unit'] = dimensions['heightUnit']['conventNationalView']
-    product_info['dimensions']['width'] = dimensions['width']
-    product_info['dimensions']['width_unit'] = dimensions['widthUnit']['conventNationalView']
-    product_info['dimensions']['depth'] = dimensions['depth']
-    product_info['dimensions']['depth_unit'] = dimensions['depthUnit']['conventNationalView']
+    if dimensions:
+        product_info['dimensions']['height'] = dimensions['height']
+        product_info['dimensions']['height_unit'] = dimensions['heightUnit']['conventNationalView']
+        product_info['dimensions']['width'] = dimensions['width']
+        product_info['dimensions']['width_unit'] = dimensions['widthUnit']['conventNationalView']
+        product_info['dimensions']['depth'] = dimensions['depth']
+        product_info['dimensions']['depth_unit'] = dimensions['depthUnit']['conventNationalView']
 
-    # get pack dimentions
+        product_info['dimensions']['weight'] = dimensions['weight']
+        product_info['dimensions']['weight_unit'] = dimensions['weightUnit']['conventNationalView']
+    else:
+        product_info['dimensions'] = None
+
+    # get pack dimensions
     try:
         product_info['pack'] = {}
         pack = raw_info.get('packs')[0]
@@ -156,28 +168,30 @@ def format_product_info(raw_info: dict):
 
     # get stock balance
     stocks = []
-    for stock in raw_info['stocks']:
-        current_stock = dict()
-        current_stock['stock_name'] = stock['stock']['name']
-        current_stock['available'] = stock['value']
-        current_stock['in_stock'] = stock['additionalFields']['totalCount']
-        current_stock['demand'] = stock['additionalFields']['demand']
-        current_stock['ordered'] = stock['additionalFields']['ordered']
-        current_stock['in_transit'] = stock['additionalFields']['inTransit']
+    if raw_info.get('stocks'):
+        for stock in raw_info['stocks']:
+            current_stock = dict()
+            current_stock['stock_name'] = stock['stock']['name']
+            current_stock['available'] = round(stock['value'])
+            current_stock['in_stock'] = round(stock['additionalFields']['totalCount'])
+            current_stock['demand'] = round(stock['additionalFields']['demand'])
+            current_stock['ordered'] = round(stock['additionalFields']['ordered'])
+            current_stock['in_transit'] = round(stock['additionalFields']['inTransit'])
 
-        stocks.append(current_stock)
+            stocks.append(current_stock)
     product_info['stocks'] = stocks
 
     # get certificates
     certificates = []
-    for cert in raw_info['additionalFields']['certificates']:
-        current_cert = dict()
-        current_cert['type'] = cert['type']
+    if raw_info['additionalFields'].get('certificates'):
+        for cert in raw_info['additionalFields']['certificates']:
+            current_cert = dict()
+            current_cert['type'] = cert['type']
 
-        current_cert['url'] = f"{config.CERT_URL}/{cert['filePath']}"
-        current_cert['validity_from'] = cert['validityPeriodFrom']
-        current_cert['validity_to'] = cert['validityPeriodTo']
-        certificates.append(current_cert)
+            current_cert['url'] = f"{config.CERT_URL}/{cert['filePath']}"
+            current_cert['validity_from'] = cert['validityPeriodFrom']
+            current_cert['validity_to'] = cert['validityPeriodTo']
+            certificates.append(current_cert)
     product_info['certificates'] = certificates
 
     # get photo gallery

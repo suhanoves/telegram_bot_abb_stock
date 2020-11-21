@@ -1,15 +1,20 @@
 import telebot
-import keyboards  # скрпит с клавиатурами
-import api_parser  # скрипт backend'а с API
-import result_viewer  # скрипт с визуализацией product info
-from config import BOT_TOKEN  # скрипт с настройками бота, доступа к API и БД
 import math
 
-# хранение результатов поиска пользователей
-USER_SEARCH_RESULTS = {}
-USER_PRODUCT_INFO = {}
+import keyboards  # скрипт с клавиатурами
+import api_parser  # скрипт backend'а для связи с API
+import result_viewer  # скрипт с визуализацией product info
+import database
+
+from config import BOT_TOKEN  # скрипт с настройками бота, доступа к API и БД
 
 bot = telebot.TeleBot(f'{BOT_TOKEN}', parse_mode=None)
+
+
+# TODO удалить после того как восстановят автогенерацию токена
+@bot.message_handler(regexp=f"^save_new_token_to_file:")
+def save_token(message):
+    api_parser.save_token_to_file(message.text[23:])
 
 
 @bot.message_handler(commands=['start'])
@@ -19,7 +24,7 @@ def start_message(message):
     user_id = get_user_id(message)
 
     # удаляем предыдущие результаты поиска по пользователю
-    del_user_search_history(user_id)
+    database.del_user_search_history(user_id)
 
     # выводим стартовое сообщение
     text = 'Всё очень просто: введите <b>артикул</b> или <b>название</b> оборудования и я поищу информацию о нём'
@@ -45,7 +50,7 @@ def help_message(message):
     text = greeting + help_text
 
     # добавляем клавиатуру
-    keyboard = keyboards.get_help_keyboard()
+    keyboard = keyboards.get_new_search_keyboard()
 
     # отправляем сообщение
     bot.send_message(chat_id=message.chat.id,
@@ -85,6 +90,14 @@ def call_search_option(call):
                          parse_mode='HTML',
                          reply_markup=keyboard)
 
+    # TODO убрать, как заработает автогенерация токена
+    elif search_results == 401:
+        print('token просрочен')
+        keyboard = keyboards.get_new_search_keyboard()
+        bot.send_message(chat_id=chat_id,
+                         text='Токен просрочен, сообщите администратору @suhanoves, он починит',
+                         reply_markup=keyboard)
+
     # если результат поиска уникален
     elif len(search_results) == 1:
         # получаем сточку с продуктом
@@ -98,8 +111,8 @@ def call_search_option(call):
     # если поиск даёт множество совпадений
     else:
         # кешируем результаты поисковой выдачи
-        add_user_search_results(user_id=user_id,
-                                search_results=search_results)
+        database.add_user_search_results(user_id=user_id,
+                                         search_results=search_results)
 
         # выдаём первую страницу результатов
         text, keyboard = get_search_results_message(search_results=search_results)
@@ -121,7 +134,7 @@ def list_pagination_message(call):
     current_page = int(call.data.split()[-1])
 
     # получаем поисковую выдачу по пользователю
-    search_results = get_user_search_results(user_id)
+    search_results = database.get_user_search_results(user_id)
 
     text, keyboard = get_search_results_message(search_results=search_results,
                                                 current_page=current_page)
@@ -154,11 +167,11 @@ def call_product_name(call):
     product_position = int(call.data.split()[-1]) - 1
 
     # получаем поисковую выдачу
-    search_results = get_user_search_results(user_id)
+    search_results = database.get_user_search_results(user_id)
 
     # получаем информацию о найденном оборудовании
     search_result = get_product_from_search_results(search_results=search_results,
-                                                   position=product_position)
+                                                    position=product_position)
 
     # отправляем сообщение об успешном поиске
     send_success_search_meassage(user_id=user_id,
@@ -173,18 +186,21 @@ def get_information(message):
     chat_id = get_chat_id(message)
 
     # получаем информацию по продукту
-    product_info = get_product_info(user_id)
+    product_info = database.get_product_info(user_id)
 
-    # получаем форматированный текст сообщения
-    text = result_viewer.info_viewer(product_info)
+    if product_info:
+        # получаем форматированный текст сообщения
+        text = result_viewer.info_viewer(product_info)
 
-    # добавляем клавиатуру
-    keyboard = keyboards.get_info_keyboard()
+        # добавляем клавиатуру
+        keyboard = keyboards.get_info_keyboard()
 
-    bot.send_message(chat_id=chat_id,
-                     text=text,
-                     parse_mode='HTML',
-                     reply_markup=keyboard)
+        bot.send_message(chat_id=chat_id,
+                         text=text,
+                         parse_mode='HTML',
+                         reply_markup=keyboard)
+    else:
+        send_empty_search_history_message(chat_id)
 
 
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Фотографии']}$")
@@ -194,18 +210,21 @@ def get_photo(message):
     chat_id = get_chat_id(message)
 
     # получаем информацию по продукту
-    product_info = get_product_info(user_id)
+    product_info = database.get_product_info(user_id)
 
-    # получаем список ссылок на фотографии
-    photos = product_info['photos']
+    if product_info:
+        # получаем список ссылок на фотографии
+        photos = product_info['photos']
 
-    # добавляем клавиатуру
-    keyboard = keyboards.get_info_keyboard()
+        # добавляем клавиатуру
+        keyboard = keyboards.get_info_keyboard()
 
-    for photo in photos:
-        bot.send_photo(chat_id=chat_id,
-                       photo=photo,
-                       reply_markup=keyboard)
+        for photo in photos:
+            bot.send_photo(chat_id=chat_id,
+                           photo=photo,
+                           reply_markup=keyboard)
+    else:
+        send_empty_search_history_message(chat_id)
 
 
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Сертификаты']}$")
@@ -215,41 +234,79 @@ def get_cert(message):
     chat_id = get_chat_id(message)
 
     # получаем информацию по продукту
-    product_info = get_product_info(user_id)
+    product_info = database.get_product_info(user_id)
 
-    # получаем список ссылок на фотографии
-    certificates = product_info['certificates']
+    if product_info:
+        # получаем список ссылок на сертификаты
+        certificates = product_info['certificates']
 
-    # добавляем клавиатуру
-    keyboard = keyboards.get_info_keyboard()
+        # добавляем клавиатуру
+        keyboard = keyboards.get_info_keyboard()
 
-    for cert in certificates:
-        bot.send_document(chat_id=chat_id,
-                          data=cert['url'],
-                          reply_markup=keyboard)
+        for cert in certificates:
+            caption = result_viewer.cert_viwer(cert)
+            bot.send_document(chat_id=chat_id,
+                              data=cert['url'],
+                              caption=caption,
+                              parse_mode='HTML',
+                              reply_markup=keyboard)
+    else:
+        send_empty_search_history_message(chat_id)
 
 
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Массогабарит']}$")
-def get_params(message):
-    text = 'раздел в разработке'
-    bot.send_message(chat_id=message.chat.id,
-                     text=text,
-                     parse_mode='HTML')
+def get_dimensions(message):
+    # получаем ID
+    user_id = get_user_id(message)
+    chat_id = get_chat_id(message)
+
+    # получаем информацию по продукту
+    product_info = database.get_product_info(user_id)
+
+    if product_info:
+        # получаем форматированный текст сообщения
+        text = result_viewer.dimensions_viwer(product_info)
+
+        # добавляем клавиатуру
+        keyboard = keyboards.get_info_keyboard()
+
+        bot.send_message(chat_id=chat_id,
+                         text=text,
+                         parse_mode='HTML',
+                         reply_markup=keyboard)
+    else:
+        send_empty_search_history_message(chat_id)
 
 
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Складские остатки']}$")
 def get_stock(message):
-    text = 'раздел в разработке'
-    bot.send_message(chat_id=message.chat.id,
-                     text=text,
-                     parse_mode='HTML')
+    # получаем ID
+    user_id = get_user_id(message)
+    chat_id = get_chat_id(message)
+
+    # получаем информацию по продукту
+    product_info = database.get_product_info(user_id)
+
+    if product_info:
+        # получаем форматированный текст сообщения
+        text = result_viewer.sctock_viwer(product_info)
+
+        # добавляем клавиатуру
+        keyboard = keyboards.get_info_keyboard()
+
+        bot.send_message(chat_id=chat_id,
+                         text=text,
+                         parse_mode='HTML',
+                         reply_markup=keyboard)
+    else:
+        send_empty_search_history_message(chat_id)
 
 
 @bot.message_handler(func=lambda m: True)
 def any_message(message):
     if all(x.isalnum() or x in ' -+=/.,*%' for x in message.text):
         answer = 'Как искать оборудование:\n<b>по артикулу</b> или <b>по названию</b>?'
-        keyboard = keyboards.get_find_keyboard()
+        keyboard = keyboards.get_search_keyboard()
         bot.reply_to(message=message,
                      text=answer,
                      parse_mode='HTML',
@@ -310,31 +367,8 @@ def list_pagination(search_results: list, current_page: int = 1):
     return text, product_numbers, page_count
 
 
-def add_user_search_results(user_id: int, search_results: list):
-    USER_SEARCH_RESULTS[user_id] = search_results
-
-
-def del_user_search_history(user_id: int):
-    if user_id in USER_SEARCH_RESULTS:
-        del USER_SEARCH_RESULTS[user_id]
-    if user_id in USER_PRODUCT_INFO:
-        del USER_PRODUCT_INFO[user_id]
-
-
-def get_user_search_results(user_id: int):
-    return USER_SEARCH_RESULTS[user_id]
-
-
 def get_product_from_search_results(search_results: list, position: int = 0):
     return search_results[position]
-
-
-def cash_product_info(user_id: int, product_info: dict):
-    USER_PRODUCT_INFO[user_id] = product_info
-
-
-def get_product_info(user_id: int):
-    return USER_PRODUCT_INFO[user_id]
 
 
 def get_user_id(instance):
@@ -360,7 +394,7 @@ def send_success_search_meassage(user_id: int, chat_id: int, search_result):
     product_info = api_parser.get_product_info(search_result['product_id'])
 
     # кэшируем в базу данных
-    cash_product_info(user_id=user_id, product_info=product_info)
+    database.cash_product_info(user_id=user_id, product_info=product_info)
 
     # Получаем артикул и название оборудования
     manudacture_code = product_info['manufacturer_code']
@@ -381,5 +415,12 @@ def send_success_search_meassage(user_id: int, chat_id: int, search_result):
                      reply_markup=keyboard)
 
 
+def send_empty_search_history_message(chat_id):
+    bot.send_message(chat_id=chat_id,
+                     text='История поиска пуста. Выполните новый запрос',
+                     reply_markup=keyboards.get_new_search_keyboard())
+
+
 if __name__ == '__main__':
+    print('bot is running')
     bot.infinity_polling()

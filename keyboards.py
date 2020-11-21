@@ -14,7 +14,7 @@ buttons_text = {'Новый запрос': '🔎 Новый запрос',
 buttons = {name: types.KeyboardButton(view) for name, view in buttons_text.items()}
 
 
-def get_find_keyboard():
+def get_search_keyboard():
     # инициализируем клавиатуру с кнопками внутри чата
     find_keyboard = types.InlineKeyboardMarkup(row_width=2)
     # инициализируем кнопки
@@ -26,7 +26,7 @@ def get_find_keyboard():
     return find_keyboard
 
 
-def get_help_keyboard():
+def get_new_search_keyboard():
     # создаём клавиатуру
     help_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     # добавляем кнопку в клавиатуру
