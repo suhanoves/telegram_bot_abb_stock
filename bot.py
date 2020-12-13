@@ -1,11 +1,11 @@
-import telebot
 import math
 
-import keyboards  # скрипт с клавиатурами
-import api_parser  # скрипт backend'а для связи с API
-import result_viewer  # скрипт с визуализацией product info
-import database
+import telebot
 
+import api_parser  # скрипт backend'а для связи с API
+import database
+import keyboards  # скрипт с клавиатурами
+import result_viewer  # скрипт с визуализацией product info
 from config import BOT_TOKEN  # скрипт с настройками бота, доступа к API и БД
 
 bot = telebot.TeleBot(f'{BOT_TOKEN}', parse_mode=None)
