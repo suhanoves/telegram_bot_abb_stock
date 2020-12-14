@@ -1,6 +1,7 @@
 import logging
 
 db_logger = logging.getLogger('database')
+db_logger.propagate = False
 db_logger.setLevel(logging.DEBUG)
 
 db_handler = logging.StreamHandler()

@@ -1,1 +1,1 @@
-from app.utils import logger
+from app.utils.db_logger import db_logger
