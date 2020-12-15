@@ -4,6 +4,12 @@ from app.utils import db_logger
 
 
 class Database:
+    # singleton pattern implementation
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Database, cls).__new__(cls)
+        return cls.instance
+
     def __init__(self, path_to_db='db.sqlite'):
         self.path_to_db = path_to_db
 
@@ -32,17 +38,22 @@ class Database:
     def create_table_users(self):
         sql = '''
             CREATE TABLE IF NOT EXISTS Users(
-            user_id int NOT NULL PRIMARY KEY,
-            name varchar(255) NOT NULL,
-            phone varchar(255),
-            email varchar(255)
-            );
+                user_id INTEGER NOT NULL PRIMARY KEY,
+                is_admin NUMERIC NOT NULL DEFAULT 0,
+                is_allowed NUMERIC NOT NULL DEFAULT 0,
+                first_name VARCHAR(255),
+                last_name VARCHAR(255),
+                username VARCHAR(255),
+                phone VARCHAR(255),
+                email VARCHAR(255)                
+            )
         '''
         self.execute(sql=sql, commit=True)
 
-    def add_user(self, user_id: int, name: str, phone: str = None, email: str = None):
+    def add_user(self, user_id: int, is_admin: bool = False, is_allowed: bool = False, first_name: str = None,
+                 last_name: str = None, username: str = None, phone: str = None, email: str = None):
         sql = 'INSERT OR IGNORE INTO Users(user_id, name, phone, email) VALUES (?, ?, ?, ?)'
-        parameters = user_id, name, phone, email
+        parameters = user_id, is_admin, is_allowed, first_name, last_name, username, phone, email
         self.execute(sql, parameters=parameters, commit=True)
 
     def select_all_users(self):
@@ -52,7 +63,7 @@ class Database:
     @staticmethod
     def format_kwargs(sql, parameters: dict):
         formatted_sql = sql
-        params = [f"{item} = ?" for item in parameters]
+        params = [f"{key} = ?" for key in parameters]
         formatted_sql += " AND ".join(params)
         return formatted_sql, tuple(parameters.values())
 
