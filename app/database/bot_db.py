@@ -52,7 +52,7 @@ class Database:
 
     def add_user(self, user_id: int, is_admin: bool = False, is_allowed: bool = False, first_name: str = None,
                  last_name: str = None, username: str = None, phone: str = None, email: str = None):
-        sql = 'INSERT OR IGNORE INTO Users(user_id, name, phone, email) VALUES (?, ?, ?, ?)'
+        sql = 'INSERT INTO Users(user_id, name, phone, email) VALUES (?, ?, ?, ?)'
         parameters = user_id, is_admin, is_allowed, first_name, last_name, username, phone, email
         self.execute(sql, parameters=parameters, commit=True)
 
