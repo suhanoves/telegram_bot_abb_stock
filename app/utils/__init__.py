@@ -1,1 +1,1 @@
-from app.utils.db_logger import db_logger
+from app.utils.bot_commands import setup_default_commands
