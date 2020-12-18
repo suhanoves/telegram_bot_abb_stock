@@ -1,11 +1,10 @@
 import sqlite3
 
-from app.utils import db_logger
-
 
 class Database:
-    # singleton pattern implementation
+
     def __new__(cls):
+        """ singleton pattern implementation"""
         if not hasattr(cls, 'instance'):
             cls.instance = super(Database, cls).__new__(cls)
         return cls.instance
@@ -13,26 +12,28 @@ class Database:
     def __init__(self, path_to_db='db.sqlite'):
         self.path_to_db = path_to_db
 
-    @property
-    def connection(self):
+    def __enter__(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path_to_db)
 
-    def execute(self, sql: str, parameters: tuple = (), fetchone=False, fetchall=False, commit=False):
-        connection = self.connection
-        connection.set_trace_callback(db_logger.debug)
+    def __exit__(self: sqlite3.Connection, exc_type, exc_val, exc_tb):
+        if isinstance(exc_val, Exception):
+            self.rollback()
+        else:
+            self.commit()
+        self.close()
 
-        cursor = connection.cursor()
+    def execute(self: sqlite3.Connection, sql: str, parameters: tuple = (),
+                fetchone=False, fetchall=False, commit=False):
+        cursor = self.cursor()
         cursor.execute(sql, parameters)
 
         data = None
         if commit:
-            connection.commit()
+            self.commit()
         if fetchone:
             data = cursor.fetchone()
         if fetchall:
             data = cursor.fetchall()
-
-        connection.close()
         return data
 
     def create_table_users(self):
