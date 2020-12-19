@@ -27,9 +27,10 @@ class User:
         return full_name
 
     @classmethod
-    def from_aiogram_user(cls, user: AiogramUser):
+    def from_aiogram_user(cls, user: AiogramUser, phone: str = '', email: str = '',
+                          is_admin: bool = False, is_allowed: bool = False):
         """
         Method creates class User from class aiogram.User
         """
-        return cls(user_id=user.id, first_name=user.first_name,
-                   last_name=user.last_name, username=user.username)
+        return cls(user_id=user.id, first_name=user.first_name, last_name=user.last_name, username=user.username,
+                   phone=phone, email=email, is_admin=is_admin, is_allowed=is_allowed)
