@@ -11,3 +11,5 @@ python-dotenv==0.15.0
 pytz==2020.4
 typing-extensions==3.7.4.3
 yarl==1.6.3
+
+loguru~=0.5.3
