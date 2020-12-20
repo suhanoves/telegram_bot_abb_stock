@@ -1,8 +1,9 @@
-from aiogram import Bot, Dispatcher
-from aiogram.utils.executor import Executor
+from aiogram import Bot, Dispatcher, types
 
 from app.config import BOT_TOKEN
+from database import Database
 
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
-executor = Executor(dp)
+
+db = Database('database/database.sqlite')
