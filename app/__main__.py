@@ -1,7 +1,7 @@
 from aiogram import Dispatcher
 from aiogram.utils import executor
 
-from app import utils
+from app import handlers, filters, utils
 from app.loader import dp, db
 
 
