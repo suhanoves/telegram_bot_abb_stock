@@ -3,6 +3,7 @@ from typing import Union
 
 from aiogram.types import User as AiogramUser
 
+from config import ADMIN
 from models import User
 from utils import logger
 
@@ -141,9 +142,12 @@ class Database:
         Determines if the user is given admin rights
         Return False if user does not exist in database #TODO think about it
         """
-        query = 'SELECT is_admin FROM Users WHERE user_id=?'
-        is_admin = self.execute(query=query, parameters=(user_id,), fetchone=True)
-        return is_admin is True
+        if user_id == ADMIN:
+            return True
+        else:
+            query = 'SELECT is_admin FROM Users WHERE user_id=?'
+            is_admin = self.execute(query=query, parameters=(user_id,), fetchone=True)
+            return is_admin is True
 
     def set_user_admin_rights(self, user_id: int, is_admin: bool) -> None:
         """
@@ -181,36 +185,18 @@ class Database:
 
     def get_user(self, **kwargs):
         prefix_sql = 'SELECT * FROM Users WHERE '
-        sql, parameters = self.add_params_to_sql_query(prefix_sql, kwargs)
-        return self.execute(sql=sql, parameters=parameters, fetchone=True)
+        query, parameters = self.add_params_to_sql_query(prefix_sql, kwargs)
+        return self.execute(query=query, parameters=parameters, fetchone=True)
 
     def get_users(self, **kwargs):
         prefix_sql = 'SELECT * FROM Users WHERE '
-        sql, parameters = self.add_params_to_sql_query(prefix_sql, kwargs)
-        return self.execute(sql=sql, parameters=parameters, fetchall=True)
+        query, parameters = self.add_params_to_sql_query(prefix_sql, kwargs)
+        return self.execute(query=query, parameters=parameters, fetchall=True)
 
-    def change_user_allowed_status(self, user: Union[AiogramUser, User], is_allowed: Union[None, bool] = None) -> None:
-        """
-        Change permission to write bot for a given user
-        If is_allowed given sets allowed rights according to is_allowed argument
-        """
+    def update_email(self, user_id, email):
+        query = 'UPDATE Users SET email=? WHERE user_id = ?'
+        return self.execute(query=query, parameters=(email, user_id), commit=True)
 
-# def select_all_users(self):
-#     sql = 'SELECT * FROM Users'
-#     return self.execute(sql=sql, fetchall=True)
-
-#
-# def select_user(self, **kwargs):
-#     prefix_sql = 'SELECT * FROM Users WHERE '
-#     sql, parameters = self.format_kwargs(prefix_sql, kwargs)
-#     return self.execute(sql=sql, parameters=parameters, fetchone=True)
-#
-# def count_users(self):
-#     return self.execute('SELECT COUNT(*) FROM Users;', fetchone=True)
-#
-# def update_email(self, user_id, email):
-#     sql = 'UPDATE Users SET email=? WHERE user_id = ?'
-#     return self.execute(sql=sql, parameters=(email, user_id), commit=True)
-#
-# def delete_all_users(self):
-#     self.execute('DELETE FROM Users WHERE True', commit=True)
+    def update_phone(self, user_id, phone):
+        query = 'UPDATE Users SET phone=? WHERE user_id = ?'
+        return self.execute(query=query, parameters=(phone, user_id), commit=True)
