@@ -12,10 +12,14 @@ bot = telebot.TeleBot(f'{BOT_TOKEN}', parse_mode=None)
 
 
 # TODO удалить после того как восстановят автогенерацию токена
-@bot.message_handler(regexp=f"^save_new_token_to_file:")
-def save_token(message):
-    api_parser.save_token_to_file(message.text[23:])
-
+@bot.message_handler(regexp=f"^token:")
+def save_token(message: telebot.types.Message):
+    token = message.text[6:]
+    if message.from_user.id == 118642040:
+        api_parser.save_token_to_file(token)
+        bot.send_message(chat_id=message.chat.id,
+                         text=f'Token установлен {token}',
+                         parse_mode='HTML'
 
 @bot.message_handler(commands=['start'])
 @bot.message_handler(regexp=f"^{keyboards.buttons_text['Новый запрос']}$")
